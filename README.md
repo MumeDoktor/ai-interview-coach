@@ -1,36 +1,138 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Interview Coach
+
+An AI-powered interview preparation platform. Practice mock interviews, get real-time feedback, and track your improvement over time.
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16 (App Router) + React 19 |
+| Language | TypeScript 5 |
+| Styling | Tailwind CSS v4 + Shadcn/ui |
+| Auth | Auth.js v5 — email/password (JWT sessions) |
+| Database | PostgreSQL 16 |
+| ORM | Prisma 6 |
+| Validation | Zod v4 |
+
+## Prerequisites
+
+- Node.js 20+
+- Docker Desktop (for local PostgreSQL)
 
 ## Getting Started
 
-First, run the development server:
+### 1. Clone and install
+
+```bash
+git clone <repo-url>
+cd ai_interview_coach
+npm install
+```
+
+### 2. Set up environment variables
+
+Copy the example and fill in your values:
+
+```bash
+cp .env.local.example .env.local
+```
+
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `AUTH_SECRET` | Random secret for session signing — generate with `npx auth secret` |
+| `NEXT_PUBLIC_APP_URL` | App base URL (e.g. `http://localhost:3000`) |
+
+### 3. Start the database
+
+```bash
+docker compose up -d
+```
+
+This starts a PostgreSQL 16 instance on `localhost:5432` with:
+- User: `postgres`
+- Password: `postgres`
+- Database: `ai_interview_coach`
+
+### 4. Run migrations
+
+```bash
+npx prisma migrate dev
+```
+
+### 5. Start the dev server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Project Structure
 
-## Learn More
+```
+app/
+  (auth)/                     # Sign-in and sign-up pages (split-panel layout)
+  api/auth/[...nextauth]/     # Auth.js route handler
+  layout.tsx
+  page.tsx
 
-To learn more about Next.js, take a look at the following resources:
+actions/
+  authActions.ts              # Server Actions: signup, login, logout
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+components/
+  ui/                         # Shadcn/ui primitives
+  shared/                     # Composite components
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+lib/
+  auth.config.ts              # Edge-safe auth config (proxy.ts uses this)
+  auth.ts                     # Full auth config with Credentials provider
+  db.ts                       # Prisma client singleton
+  env.ts                      # Typed + validated environment variables
+  validations.ts              # Zod schemas
 
-## Deploy on Vercel
+prisma/
+  schema.prisma               # Database schema
+prisma.config.ts              # Prisma 6 configuration
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+proxy.ts                      # Route protection (Next.js 16 middleware)
+docker-compose.yml            # Local PostgreSQL
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Available Scripts
+
+| Command | Description |
+|---|---|
+| `npm run dev` | Start development server |
+| `npm run build` | Production build |
+| `npm run lint` | Run ESLint |
+| `npx prisma migrate dev` | Create and apply a new migration |
+| `npx prisma studio` | Open Prisma Studio (DB browser) |
+| `docker compose up -d` | Start PostgreSQL in background |
+| `docker compose down` | Stop PostgreSQL |
+
+## Authentication Flow
+
+- **Sign up** — `POST /sign-up` → Server Action hashes password with bcrypt, creates user in DB, then signs in automatically
+- **Sign in** — `POST /sign-in` → Auth.js Credentials provider verifies password, issues JWT session cookie
+- **Route protection** — `proxy.ts` reads the JWT cookie on every request; unauthenticated users are redirected to `/sign-in`
+- **Session** — Stateless JWT, 7-day expiry, stored in an `HttpOnly` cookie
+
+## Environment Variables Reference
+
+Create a `.env.local` file at the project root:
+
+```bash
+# Database
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/ai_interview_coach?schema=public"
+
+# Auth — generate with: npx auth secret
+AUTH_SECRET=your_secret_here
+
+# Public
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+> **Note:** `.env.local` is gitignored. Never commit secrets.

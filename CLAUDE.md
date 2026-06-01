@@ -1,7 +1,85 @@
-# CLAUDE.md — Next.js Project Conventions
+@AGENTS.md
+
+# CLAUDE.md — AI Interview Coach
 
 > This file defines the conventions, architecture rules, and best practices for this project.
 > Every contributor (human or AI) must follow these guidelines to maintain a stable, scalable, and maintainable codebase.
+
+---
+
+## 🗂 Project Stack
+
+| Layer | Choice |
+|---|---|
+| Framework | Next.js 16 (App Router) + React 19 |
+| Language | TypeScript 5 (strict mode) |
+| Styling | Tailwind CSS v4 + Shadcn/ui (base-ui primitives) |
+| Auth | Auth.js v5 (`next-auth@beta`) — JWT strategy, Credentials provider |
+| Database | PostgreSQL via Docker |
+| ORM | Prisma 6 |
+| Validation | Zod v4 |
+
+## 🏗 As-built File Structure
+
+The project uses a **root-level `app/`** directory (no `src/` wrapper). All shared code lives at the root alongside `app/`.
+
+```
+app/
+  (auth)/
+    layout.tsx                  # Split-panel auth layout (dark brand | form card)
+    sign-in/
+      page.tsx
+      _components/SignInForm.tsx
+    sign-up/
+      page.tsx
+      _components/SignUpForm.tsx
+  api/auth/[...nextauth]/route.ts
+  layout.tsx
+  page.tsx
+
+actions/
+  authActions.ts                # signup, login, logout server actions
+
+components/
+  ui/                           # Shadcn primitives (button, input, label, card, password-input)
+  shared/                       # Composite components
+
+lib/
+  auth.config.ts                # Edge-safe auth config (no Prisma) — used by proxy.ts
+  auth.ts                       # Full auth config with Credentials + Prisma — Node.js only
+  db.ts                         # Prisma client singleton (server-only)
+  env.ts                        # Typed + validated ENV wrapper (server-only)
+  validations.ts                # Zod schemas: SignUpSchema, SignInSchema
+  utils.ts                      # cn() helper (Shadcn)
+
+prisma/
+  schema.prisma                 # User model
+prisma.config.ts                # Prisma 6 config (datasource, migration path)
+
+proxy.ts                        # Route protection — Next.js 16's middleware.ts replacement
+docker-compose.yml              # PostgreSQL 16 on port 5432
+```
+
+## 🐳 Dev Environment
+
+Start the database before running the dev server:
+```bash
+docker compose up -d
+npm run dev
+```
+
+Credentials (local only): `postgresql://postgres:postgres@localhost:5432/ai_interview_coach`
+
+## 🔐 Auth Architecture
+
+Auth.js v5 uses a **split-config** pattern to avoid importing Prisma into the Edge proxy:
+
+- `lib/auth.config.ts` — session strategy, pages, `authorized` callback. No providers, no Prisma. Safe for Edge.
+- `lib/auth.ts` — spreads `authConfig` + adds the Credentials provider with Prisma lookups. Node.js only.
+- `proxy.ts` — imports **only** from `auth.config.ts` via `NextAuth(authConfig)`.
+- `app/api/auth/[...nextauth]/route.ts` — imports from `auth.ts` (full config).
+
+Sign-up is a plain Server Action (`actions/authActions.ts`) that hashes the password with bcrypt, creates the user in Prisma, then calls `signIn()`.
 
 ---
 
