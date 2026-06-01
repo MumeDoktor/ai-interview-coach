@@ -1,0 +1,10 @@
+import 'server-only'
+import { z } from 'zod'
+
+const envSchema = z.object({
+  DATABASE_URL: z.string().url(),
+  AUTH_SECRET: z.string().min(32),
+  NEXT_PUBLIC_APP_URL: z.string().url(),
+})
+
+export const env = envSchema.parse(process.env)
