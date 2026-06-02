@@ -9,10 +9,91 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String?
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String        @id @default(cuid())
+  name         String?
+  email        String        @unique
+  password     String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  analyses     JobAnalysis[]
+  callSessions CallSession[]
+  resumes      Resume[]
+}
+
+model JobAnalysis {
+  id               String               @id @default(cuid())
+  userId           String
+  user             User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobTitle         String
+  company          String
+  jobDescription   String
+  analysis         Json
+  candidateContext String?
+  interviewers     InterviewerProfile[]
+  callSessions     CallSession[]
+  createdAt        DateTime             @default(now())
+}
+
+model CallSession {
+  id           String      @id @default(cuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  analysisId   String?
+  analysis     JobAnalysis? @relation(fields: [analysisId], references: [id])
+  status       CallStatus  @default(IN_PROGRESS)
+  startedAt    DateTime    @default(now())
+  endedAt      DateTime?
+  isPublic     Boolean     @default(false)
+  audioUrl     String?
+  consentGiven Boolean     @default(false)
+  turns        CallTurn[]
+  report       CallReport?
+}
+
+model CallTurn {
+  id        String      @id @default(cuid())
+  sessionId String
+  session   CallSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      TurnRole
+  content   String
+  timestamp DateTime    @default(now())
+}
+
+model CallReport {
+  id           String      @id @default(cuid())
+  sessionId    String      @unique
+  session      CallSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  overallScore Int
+  report       Json
+  createdAt    DateTime    @default(now())
+}
+
+enum CallStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+enum TurnRole {
+  USER
+  AI
+}
+
+model InterviewerProfile {
+  id            String      @id @default(cuid())
+  jobAnalysisId String
+  jobAnalysis   JobAnalysis @relation(fields: [jobAnalysisId], references: [id], onDelete: Cascade)
+  name          String
+  title         String?
+  linkedinUrl   String?
+}
+
+model Resume {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileName   String
+  fileSize   Int
+  rawText    String
+  uploadedAt DateTime @default(now())
 }

@@ -8,11 +8,10 @@ import { logout } from '@/actions/authActions'
 import {
   BrainCircuit,
   LayoutDashboard,
-  Target,
   ScrollText,
-  Mic2,
   Settings,
   LogOut,
+  FileSearch,
 } from 'lucide-react'
 
 interface TNavItem {
@@ -25,9 +24,8 @@ interface TNavItem {
 
 const NAV: TNavItem[] = [
   { href: '/dashboard',          icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/dashboard/practice', icon: Target,          label: 'Practice',        soon: true },
+  { href: '/dashboard/analyze',  icon: FileSearch,      label: 'Job Analysis' },
   { href: '/dashboard/sessions', icon: ScrollText,      label: 'My Sessions',     soon: true },
-  { href: '/dashboard/voice',    icon: Mic2,            label: 'Voice Interview', soon: true, premium: true },
   { href: '/dashboard/settings', icon: Settings,        label: 'Settings',        soon: true },
 ]
 

@@ -18,6 +18,7 @@ interface TFeatureCard {
   title: string
   description: string
   accent: 'violet' | 'teal' | 'amber'
+  href?: string
   soon?: boolean
   premium?: boolean
 }
@@ -35,7 +36,7 @@ const FEATURES: TFeatureCard[] = [
     title: 'Job analysis',
     description: 'Paste a job posting, company name, and HR. AI builds a tailored session around the real role.',
     accent: 'teal',
-    soon: true,
+    href: '/dashboard/analyze',
   },
   {
     Icon: Mic2,
@@ -131,19 +132,19 @@ export default async function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {FEATURES.map(({ Icon, title, description, accent, soon, premium }) => {
+          {FEATURES.map(({ Icon, title, description, accent, href, soon, premium }) => {
             const colors = ACCENT[accent]
-            return (
-              <div
-                key={title}
-                className="group relative flex flex-col rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5 transition-colors"
-              >
-                {/* Coming soon overlay badge */}
+            const cardClass =
+              'group relative flex flex-col rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5 transition-all duration-200' +
+              (href ? ' hover:border-teal-500/30 hover:bg-zinc-900 cursor-pointer' : '')
+
+            const inner = (
+              <>
                 <div className="mb-4 flex items-start justify-between gap-2">
                   <div
                     className={`flex h-9 w-9 items-center justify-center rounded-xl border ${colors.icon}`}
                   >
-                    <Icon className="h-4.5 w-4.5" />
+                    <Icon className="h-4 w-4" />
                   </div>
                   <div className="flex items-center gap-1.5">
                     {premium && (
@@ -161,12 +162,15 @@ export default async function DashboardPage() {
                     )}
                   </div>
                 </div>
-
                 <h3 className="mb-1.5 font-semibold text-white">{title}</h3>
-                <p className="flex-1 text-sm leading-relaxed text-zinc-400">
-                  {description}
-                </p>
-              </div>
+                <p className="flex-1 text-sm leading-relaxed text-zinc-400">{description}</p>
+              </>
+            )
+
+            return href ? (
+              <Link key={title} href={href} className={cardClass}>{inner}</Link>
+            ) : (
+              <div key={title} className={cardClass}>{inner}</div>
             )
           })}
         </div>

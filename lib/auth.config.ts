@@ -7,6 +7,15 @@ export const authConfig: NextAuthConfig = {
   },
   providers: [],
   callbacks: {
+    // Expose user.id from JWT token.sub so server actions can read it
+    jwt({ token, user }) {
+      if (user?.id) token.sub = user.id
+      return token
+    },
+    session({ session, token }) {
+      if (token.sub) session.user.id = token.sub
+      return session
+    },
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user
       const isProtectedRoute = nextUrl.pathname.startsWith('/dashboard')
