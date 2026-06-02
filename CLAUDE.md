@@ -26,39 +26,62 @@ The project uses a **root-level `app/`** directory (no `src/` wrapper). All shar
 ```
 app/
   (auth)/
-    layout.tsx                  # Split-panel auth layout (dark brand | form card)
+    layout.tsx                    # Split-panel layout: dark brand panel | form card
     sign-in/
       page.tsx
       _components/SignInForm.tsx
     sign-up/
       page.tsx
       _components/SignUpForm.tsx
+  _components/                    # Landing page client components (route-scoped)
+    RoleCycler.tsx                #   Animated role name cycler (fade transition)
+    MockInterviewCard.tsx         #   Static chat-style interview mockup
+    AudioCallCard.tsx             #   Live voice call mockup — waveform animation
+    JobAnalysisCard.tsx           #   Job analysis report — topic bars, HR style, culture tags
   api/auth/[...nextauth]/route.ts
-  layout.tsx
-  page.tsx
+  dashboard/
+    layout.tsx                    # RSC — reads session, guards route, renders Sidebar
+    page.tsx                      # RSC — welcome header, stats row, feature cards, empty sessions
+    _components/
+      Sidebar.tsx                 # Client — sticky desktop nav + mobile top bar + logout form
+  layout.tsx                      # Root layout — Geist font, globals.css
+  page.tsx                        # Marketing home page (RSC)
 
 actions/
-  authActions.ts                # signup, login, logout server actions
+  authActions.ts                  # signup · login · logout server actions
 
 components/
-  ui/                           # Shadcn primitives (button, input, label, card, password-input)
-  shared/                       # Composite components
+  ui/                             # Shadcn primitives: Button, Input, Label, Card, PasswordInput
+  shared/                         # Composite components (none yet)
 
 lib/
-  auth.config.ts                # Edge-safe auth config (no Prisma) — used by proxy.ts
-  auth.ts                       # Full auth config with Credentials + Prisma — Node.js only
-  db.ts                         # Prisma client singleton (server-only)
-  env.ts                        # Typed + validated ENV wrapper (server-only)
-  validations.ts                # Zod schemas: SignUpSchema, SignInSchema
-  utils.ts                      # cn() helper (Shadcn)
+  auth.config.ts                  # Edge-safe auth config — session strategy, pages, authorized cb
+  auth.ts                         # Full auth config — Credentials provider + Prisma lookups
+  db.ts                           # Prisma client singleton (server-only)
+  env.ts                          # Typed + validated ENV wrapper (server-only)
+  validations.ts                  # Zod schemas: SignUpSchema, SignInSchema
+  utils.ts                        # cn() helper (clsx + tailwind-merge)
 
 prisma/
-  schema.prisma                 # User model
-prisma.config.ts                # Prisma 6 config (datasource, migration path)
+  schema.prisma                   # User model (id, name, email, password, timestamps)
+prisma.config.ts                  # Prisma 6 config (datasource, migration path)
 
-proxy.ts                        # Route protection — Next.js 16's middleware.ts replacement
-docker-compose.yml              # PostgreSQL 16 on port 5432
+proxy.ts                          # Route protection — Next.js 16's middleware.ts replacement
+docker-compose.yml                # PostgreSQL 16 on port 5432
 ```
+
+## 🗺 Feature Roadmap & Status
+
+| Feature | Status | Notes |
+|---|---|---|
+| Auth (sign-up / sign-in / sign-out) | ✅ Shipped | JWT, bcrypt, server actions |
+| Landing page | ✅ Shipped | Hero, 3 features, job analysis section, voice section, how-it-works, CTA |
+| Dashboard shell | ✅ Shipped | Sidebar nav, stats row, feature cards, empty sessions |
+| Practice sessions | 🔜 Next | Scaffolded as "Coming soon" in dashboard |
+| Job analysis feature | 🔜 Next | Scaffolded as "Coming soon" in dashboard |
+| Voice interview (Premium) | 🔜 Later | Scaffolded as "Coming soon · Pro" in dashboard |
+
+When building new features, wire the dashboard `Sidebar` nav item (remove `soon: true`) and create the route under `app/dashboard/[feature-name]/`.
 
 ## 🐳 Dev Environment
 
@@ -69,6 +92,68 @@ npm run dev
 ```
 
 Credentials (local only): `postgresql://postgres:postgres@localhost:5432/ai_interview_coach`
+
+## 🎨 Visual Design Language
+
+The app uses `bg-zinc-950` as the global dark base. Accent colors signal feature tiers consistently across landing page and dashboard — never mix these associations:
+
+| Accent | Tailwind prefix | Used for |
+|---|---|---|
+| Violet | `violet-*` | Core product, primary CTAs, active nav state |
+| Teal | `teal-*` | Job/company/HR intelligence feature |
+| Amber | `amber-*` | Premium / Pro tier (voice interview) |
+| Emerald | `emerald-*` | Success states, live/online indicators |
+
+**Landing page sections** follow an alternating card layout (card-right for job analysis, card-left for voice) to create visual rhythm. Keep this pattern when adding new feature sections.
+
+**Dashboard** uses `bg-zinc-900` for the sidebar and `bg-zinc-950` for the main content area — matching the auth brand panel color.
+
+## 🧩 UI Component Patterns
+
+### Button vs Link
+
+The `Button` component is built on `@base-ui/react/button` and does **not** support the `asChild` / Radix `Slot` pattern. Putting `<Button>` inside `<Link>` produces invalid DOM (`<button>` inside `<a>`).
+
+```tsx
+// ✅ Navigation CTAs — use a styled <Link> directly
+<Link
+  href="/sign-up"
+  className="inline-flex h-12 items-center gap-2 rounded-xl bg-violet-600 px-8 text-base font-medium text-white transition-colors hover:bg-violet-500"
+>
+  Get started
+</Link>
+
+// ✅ Form submits — use <Button> (renders a real <button>)
+<Button type="submit" size="lg" className="w-full">Sign in</Button>
+
+// ❌ Never nest Button inside Link
+<Link href="/sign-up"><Button>Get started</Button></Link>
+```
+
+### Sign-out in client components
+
+Use a `<form action={logout}>` to call the server action — no `useRouter` or `onClick` needed:
+
+```tsx
+'use client'
+import { logout } from '@/actions/authActions'
+
+<form action={logout}>
+  <button type="submit">Sign out</button>
+</form>
+```
+
+### Non-clickable nav items ("Coming soon")
+
+Render `<div>` instead of `<Link>` for disabled nav entries so there is no href to accidentally navigate to:
+
+```tsx
+{soon ? (
+  <div className="... cursor-not-allowed opacity-40">{inner}</div>
+) : (
+  <Link href={href} className="...">{inner}</Link>
+)}
+```
 
 ## 🔐 Auth Architecture
 
@@ -334,17 +419,23 @@ type User = z.infer<typeof UserSchema> // type derived from Zod schema
 const user = UserSchema.parse(await response.json()) // runtime validated
 ```
 
-### Required `tsconfig.json` options
+### `tsconfig.json` — current state
+
+The repo currently only has `"strict": true`. The stricter options below are recommended but **not yet enabled** — enable them intentionally and fix the resulting type errors before shipping:
 
 ```json
 {
   "compilerOptions": {
     "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true
+
+    // Not yet enabled — add when ready:
+    // "noUncheckedIndexedAccess": true,   // array[i] becomes T | undefined
+    // "exactOptionalPropertyTypes": true  // { x?: string } ≠ { x: string | undefined }
   }
 }
 ```
+
+Until `noUncheckedIndexedAccess` is on, treat array/object indexing defensively anyway (use `?? fallback`) so enabling it later causes zero surprises.
 
 ---
 
@@ -693,7 +784,10 @@ export default [
 | `any` TypeScript type | `unknown` + type guard or Zod parsing |
 | Global state for URL-shareable state | `useQueryState` from `nuqs` |
 | Importing entire libraries | Destructure only what you need |
+| `<Link><Button>` nesting | Styled `<Link>` for nav, `<Button type="submit">` for forms |
+| Enabling a "Soon" nav item with a dead `href="#"` | Render as `<div>` (no href) with `cursor-not-allowed` |
+| Mixing accent colors across feature tiers | Violet = core, Teal = analysis, Amber = premium — keep consistent |
 
 ---
 
-*Last updated: June 2026 — Next.js 15 / React 19 conventions*
+*Last updated: June 2026 — Next.js 16 / React 19 — reflects auth, landing page, and dashboard v1*
