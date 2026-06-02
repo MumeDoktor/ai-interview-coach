@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import bcrypt from 'bcryptjs'
 import { AuthError } from 'next-auth'
 import { db } from '@/lib/db'
-import { signIn } from '@/lib/auth'
+import { signIn, signOut } from '@/lib/auth'
 import { SignUpSchema, SignInSchema } from '@/lib/validations'
 
 export type TAuthState =
